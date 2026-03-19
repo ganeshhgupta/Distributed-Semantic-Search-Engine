@@ -1,0 +1,34 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY shared/ ./shared/
+COPY worker/ ./worker/
+COPY scripts/ ./scripts/
+
+# Pre-download embedding model weights into the image layer cache
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
+# Pre-compute shard 0 embeddings at build time — baked into the image
+ENV SHARD_ID=0
+ENV SHARD_COUNT=3
+ENV DOCS_PER_SHARD=300
+RUN python scripts/precompute_shard.py
+
+ENV PYTHONPATH=/app
+ENV DATA_DIR=/app/data
+ENV WORKER_PORT=8001
+
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=60s \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"
+
+CMD ["sh", "-c", "uvicorn worker.main:app --host 0.0.0.0 --port ${WORKER_PORT:-8001}"]
