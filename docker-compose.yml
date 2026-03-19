@@ -1,0 +1,159 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Distributed Semantic Search Engine
+# ---------------------------------------------------------------------------
+#
+# Services:
+#   coordinator   — FastAPI coordinator on port 8000
+#   worker-1      — Shard 0 on port 8001
+#   worker-2      — Shard 1 on port 8002
+#   worker-3      — Shard 2 on port 8003
+#   frontend      — React/Nginx on port 3000
+#
+# Shared volumes for persisted FAISS shard indexes:
+#   worker1-data, worker2-data, worker3-data
+
+networks:
+  search-net:
+    driver: bridge
+
+volumes:
+  worker1-data:
+  worker2-data:
+  worker3-data:
+
+x-worker-common: &worker-common
+  build:
+    context: .
+    dockerfile: Dockerfile.worker
+  networks:
+    - search-net
+  environment:
+    SHARD_COUNT: "3"
+    DATA_DIR: /data
+    COORDINATOR_URL: http://coordinator:8000
+    DOCS_PER_SHARD: "4000"
+  restart: unless-stopped
+
+services:
+
+  # --------------------------------------------------------------------------
+  # Coordinator
+  # --------------------------------------------------------------------------
+  coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile.coordinator
+    container_name: coordinator
+    networks:
+      - search-net
+    ports:
+      - "8000:8000"
+    environment:
+      COORDINATOR_PORT: "8000"
+      WORKER_URLS: "http://worker-1:8001,http://worker-2:8002,http://worker-3:8003"
+      HEALTH_POLL_INTERVAL: "10"
+      FANOUT_TIMEOUT: "2"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      worker-1:
+        condition: service_started
+      worker-2:
+        condition: service_started
+      worker-3:
+        condition: service_started
+
+  # --------------------------------------------------------------------------
+  # Workers
+  # --------------------------------------------------------------------------
+  worker-1:
+    <<: *worker-common
+    container_name: worker-1
+    ports:
+      - "8001:8001"
+    environment:
+      WORKER_ID: worker-1
+      WORKER_PORT: "8001"
+      SHARD_ID: "0"
+      SHARD_COUNT: "3"
+      DATA_DIR: /data
+      DOCS_PER_SHARD: "4000"
+    volumes:
+      - worker1-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  worker-2:
+    <<: *worker-common
+    container_name: worker-2
+    ports:
+      - "8002:8002"
+    environment:
+      WORKER_ID: worker-2
+      WORKER_PORT: "8002"
+      SHARD_ID: "1"
+      SHARD_COUNT: "3"
+      DATA_DIR: /data
+      DOCS_PER_SHARD: "4000"
+    volumes:
+      - worker2-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  worker-3:
+    <<: *worker-common
+    container_name: worker-3
+    ports:
+      - "8003:8003"
+    environment:
+      WORKER_ID: worker-3
+      WORKER_PORT: "8003"
+      SHARD_ID: "2"
+      SHARD_COUNT: "3"
+      DATA_DIR: /data
+      DOCS_PER_SHARD: "4000"
+    volumes:
+      - worker3-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  # --------------------------------------------------------------------------
+  # Frontend
+  # --------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: frontend
+    networks:
+      - search-net
+    ports:
+      - "3000:80"
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
