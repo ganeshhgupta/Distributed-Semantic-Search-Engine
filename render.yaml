@@ -1,0 +1,111 @@
+services:
+
+  # --------------------------------------------------------------------------
+  # Worker 1 — Shard 0 (private, internal only)
+  # --------------------------------------------------------------------------
+  - type: pserv
+    name: worker-1
+    env: docker
+    dockerfilePath: ./Dockerfile.worker
+    dockerContext: .
+    plan: starter
+    disk:
+      name: worker1-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: WORKER_ID
+        value: worker-1
+      - key: WORKER_PORT
+        value: "8001"
+      - key: SHARD_ID
+        value: "0"
+      - key: SHARD_COUNT
+        value: "3"
+      - key: DATA_DIR
+        value: /data
+      - key: DOCS_PER_SHARD
+        value: "4000"
+
+  # --------------------------------------------------------------------------
+  # Worker 2 — Shard 1 (private, internal only)
+  # --------------------------------------------------------------------------
+  - type: pserv
+    name: worker-2
+    env: docker
+    dockerfilePath: ./Dockerfile.worker
+    dockerContext: .
+    plan: starter
+    disk:
+      name: worker2-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: WORKER_ID
+        value: worker-2
+      - key: WORKER_PORT
+        value: "8002"
+      - key: SHARD_ID
+        value: "1"
+      - key: SHARD_COUNT
+        value: "3"
+      - key: DATA_DIR
+        value: /data
+      - key: DOCS_PER_SHARD
+        value: "4000"
+
+  # --------------------------------------------------------------------------
+  # Worker 3 — Shard 2 (private, internal only)
+  # --------------------------------------------------------------------------
+  - type: pserv
+    name: worker-3
+    env: docker
+    dockerfilePath: ./Dockerfile.worker
+    dockerContext: .
+    plan: starter
+    disk:
+      name: worker3-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: WORKER_ID
+        value: worker-3
+      - key: WORKER_PORT
+        value: "8003"
+      - key: SHARD_ID
+        value: "2"
+      - key: SHARD_COUNT
+        value: "3"
+      - key: DATA_DIR
+        value: /data
+      - key: DOCS_PER_SHARD
+        value: "4000"
+
+  # --------------------------------------------------------------------------
+  # Coordinator — public REST API
+  # --------------------------------------------------------------------------
+  - type: web
+    name: coordinator
+    env: docker
+    dockerfilePath: ./Dockerfile.coordinator
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: COORDINATOR_PORT
+        value: "8000"
+      - key: WORKER_URLS
+        value: "http://worker-1:8001,http://worker-2:8002,http://worker-3:8003"
+      - key: HEALTH_POLL_INTERVAL
+        value: "10"
+      - key: FANOUT_TIMEOUT
+        value: "2"
+
+  # --------------------------------------------------------------------------
+  # Frontend — React/Vite served via nginx, proxies /api/ to coordinator
+  # --------------------------------------------------------------------------
+  - type: web
+    name: frontend
+    env: docker
+    dockerfilePath: ./Dockerfile.frontend
+    dockerContext: .
+    plan: starter
