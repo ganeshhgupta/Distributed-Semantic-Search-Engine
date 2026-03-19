@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ResultCard from "../components/ResultCard";
 import SearchBar from "../components/SearchBar";
+import SearchFlowAnimation from "../components/SearchFlowAnimation";
 import SkeletonCard from "../components/SkeletonCard";
 import { useSearch } from "../hooks/useSearch";
 
@@ -104,13 +105,21 @@ export default function Search() {
           </div>
         )}
 
-        {/* Skeleton loading */}
+        {/* Search flow animation + skeleton loading */}
         {loading && (
-          <div className="space-y-4">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
+          <>
+            <SearchFlowAnimation loading={loading} response={null} />
+            <div className="space-y-4 mt-4">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          </>
+        )}
+
+        {/* Flow animation in done state */}
+        {!loading && results && (
+          <SearchFlowAnimation loading={false} response={results} />
         )}
 
         {/* Results list */}
