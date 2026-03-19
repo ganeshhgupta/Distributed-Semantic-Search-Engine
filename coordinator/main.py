@@ -123,7 +123,7 @@ _snapshot_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
 def _build_worker_statuses() -> List[WorkerStatus]:
     statuses = []
     for shard_id, url in enumerate(WORKER_URLS):
-        worker_id = f"worker-{shard_id + 1}"
+        worker_id = f"search-worker-{shard_id}"
         statuses.append(WorkerStatus(worker_id=worker_id, url=url, shard_id=shard_id))
     return statuses
 
