@@ -195,11 +195,11 @@ export default function SearchFlowAnimation({ loading, response }: Props) {
     clearTimers();
     if (loading) {
       setStage("embedding");
-      timers.current.push(setTimeout(() => setStage("fanout"),    420));
-      timers.current.push(setTimeout(() => setStage("searching"), 900));
+      timers.current.push(setTimeout(() => setStage("fanout"),    600));
+      timers.current.push(setTimeout(() => setStage("searching"), 1300));
     } else if (response) {
       setStage("merging");
-      timers.current.push(setTimeout(() => setStage("done"), 600));
+      timers.current.push(setTimeout(() => setStage("done"), 900));
     } else {
       setStage("idle");
     }

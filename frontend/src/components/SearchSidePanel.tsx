@@ -75,13 +75,29 @@ export default function SearchSidePanel({ loading, response, workers }: Props) {
       exit={{ opacity: 0, x: 20 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Flow animation card */}
-      <div className="bg-white rounded-[12px] border border-slate-100 shadow-sm p-4">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
-          Fan-out
-        </p>
-        <SearchFlowAnimation loading={loading} response={response} />
-      </div>
+      {/* Flow animation card — only shown after results arrive (done state) */}
+      {!loading && response && (
+        <div className="bg-white rounded-[12px] border border-slate-100 shadow-sm p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
+            Fan-out trace
+          </p>
+          <SearchFlowAnimation loading={false} response={response} />
+        </div>
+      )}
+
+      {/* Loading placeholder */}
+      {loading && (
+        <div className="bg-white rounded-[12px] border border-slate-100 shadow-sm p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+            Fan-out trace
+          </p>
+          <div className="space-y-2">
+            {["coordinator", "worker-0", "worker-1", "worker-2", "merge"].map((n) => (
+              <div key={n} className="h-2 bg-slate-100 rounded-full animate-pulse" style={{ width: n === "coordinator" ? "60%" : n === "merge" ? "50%" : "80%" }} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Latency breakdown */}
       <AnimatePresence>

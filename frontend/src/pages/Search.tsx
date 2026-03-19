@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ResultCard from "../components/ResultCard";
 import SearchBar from "../components/SearchBar";
+import SearchFlowAnimation from "../components/SearchFlowAnimation";
 import SearchSidePanel from "../components/SearchSidePanel";
 import SkeletonCard from "../components/SkeletonCard";
 import { useClusterHealth } from "../hooks/useClusterHealth";
@@ -114,12 +115,17 @@ export default function Search() {
             </div>
           )}
 
-          {/* Skeleton loading */}
+          {/* Loading: big centered animation + skeleton cards */}
           {loading && (
-            <div className="space-y-4">
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
+            <div>
+              <div className="bg-white rounded-[14px] border border-slate-100 shadow-sm px-6 py-4 mb-6">
+                <SearchFlowAnimation loading={true} response={null} />
+              </div>
+              <div className="space-y-4">
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
             </div>
           )}
 
