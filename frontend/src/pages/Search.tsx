@@ -3,8 +3,9 @@ import { useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ResultCard from "../components/ResultCard";
 import SearchBar from "../components/SearchBar";
-import SearchFlowAnimation from "../components/SearchFlowAnimation";
+import SearchSidePanel from "../components/SearchSidePanel";
 import SkeletonCard from "../components/SkeletonCard";
+import { useClusterHealth } from "../hooks/useClusterHealth";
 import { useSearch } from "../hooks/useSearch";
 
 function LatencyPill({ ms }: { ms: number }) {
@@ -29,6 +30,7 @@ export default function Search() {
   const queryParam = searchParams.get("q") ?? "";
 
   const { results, loading, error, search } = useSearch();
+  const { health } = useClusterHealth();
 
   useEffect(() => {
     if (queryParam) {
@@ -40,6 +42,8 @@ export default function Search() {
   const handleSearch = (query: string) => {
     navigate(`/search?q=${encodeURIComponent(query)}`);
   };
+
+  const showPanel = loading || !!results;
 
   return (
     <motion.div
@@ -72,94 +76,100 @@ export default function Search() {
           )}
         </div>
 
+        <Link to="/about" className="text-slate-500 hover:text-slate-800 text-sm transition-colors shrink-0">About</Link>
         <Link to="/corpus" className="text-slate-500 hover:text-slate-800 text-sm transition-colors shrink-0">Corpus</Link>
         <Link to="/system" className="text-slate-500 hover:text-slate-800 text-sm transition-colors shrink-0">System</Link>
       </header>
 
-      {/* Results */}
-      <main className="max-w-2xl mx-auto mt-8 px-4 pb-16">
-        {/* Degraded mode warning */}
-        {results?.degraded && (
-          <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200
-            rounded-[12px] px-4 py-3 text-sm text-amber-700">
-            <span>⚠</span>
-            <span>Running in degraded mode — some workers are offline. Results may be incomplete.</span>
-          </div>
-        )}
+      {/* Main layout: results + side panel */}
+      <div className={`mx-auto px-4 pb-16 pt-8 flex gap-6 ${showPanel ? "max-w-5xl" : "max-w-2xl"}`}>
 
-        {/* Meta row */}
-        {results && !loading && (
-          <div className="flex items-center justify-between mb-4 text-xs text-slate-400 font-mono">
-            <span>{results.results.length} results for &ldquo;{results.query}&rdquo;</span>
-            <span className="flex gap-3">
-              <span>fan-out {results.fanout_ms.toFixed(0)}ms</span>
-              <span>merge {results.merge_ms.toFixed(0)}ms</span>
-              <span>{results.workers_queried.length} shards</span>
-            </span>
-          </div>
-        )}
+        {/* Results column */}
+        <div className="flex-1 min-w-0">
+          {/* Degraded mode warning */}
+          {results?.degraded && (
+            <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200
+              rounded-[12px] px-4 py-3 text-sm text-amber-700">
+              <span>⚠</span>
+              <span>Running in degraded mode — some workers are offline. Results may be incomplete.</span>
+            </div>
+          )}
 
-        {/* Error state */}
-        {error && !loading && (
-          <div className="bg-red-50 border border-red-200 rounded-[12px] p-5 text-red-700 text-sm">
-            <strong>Error:</strong> {error}
-          </div>
-        )}
+          {/* Meta row */}
+          {results && !loading && (
+            <div className="flex items-center justify-between mb-4 text-xs text-slate-400 font-mono">
+              <span>{results.results.length} results for &ldquo;{results.query}&rdquo;</span>
+              <span className="flex gap-3">
+                <span>fan-out {results.fanout_ms.toFixed(0)}ms</span>
+                <span>merge {results.merge_ms.toFixed(0)}ms</span>
+                <span>{results.workers_queried.length} shards</span>
+              </span>
+            </div>
+          )}
 
-        {/* Search flow animation + skeleton loading */}
-        {loading && (
-          <>
-            <SearchFlowAnimation loading={loading} response={null} />
-            <div className="space-y-4 mt-4">
+          {/* Error state */}
+          {error && !loading && (
+            <div className="bg-red-50 border border-red-200 rounded-[12px] p-5 text-red-700 text-sm">
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+
+          {/* Skeleton loading */}
+          {loading && (
+            <div className="space-y-4">
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
             </div>
-          </>
-        )}
+          )}
 
-        {/* Flow animation in done state */}
-        {!loading && results && (
-          <SearchFlowAnimation loading={false} response={results} />
-        )}
+          {/* Results list */}
+          {!loading && results && (
+            <motion.div
+              className="space-y-4"
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.04 } },
+              }}
+            >
+              {results.results.length === 0 ? (
+                <p className="text-slate-400 text-center py-12">No results found.</p>
+              ) : (
+                results.results.map((result) => (
+                  <motion.div
+                    key={result.doc_id}
+                    variants={{
+                      hidden: { opacity: 0, y: 10 },
+                      visible: { opacity: 1, y: 0 },
+                    }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ResultCard result={result} query={results.query} />
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          )}
 
-        {/* Results list */}
-        {!loading && results && (
-          <motion.div
-            className="space-y-4"
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.04 } },
-            }}
-          >
-            {results.results.length === 0 ? (
-              <p className="text-slate-400 text-center py-12">No results found.</p>
-            ) : (
-              results.results.map((result) => (
-                <motion.div
-                  key={result.doc_id}
-                  variants={{
-                    hidden: { opacity: 0, y: 10 },
-                    visible: { opacity: 1, y: 0 },
-                  }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ResultCard result={result} query={results.query} />
-                </motion.div>
-              ))
-            )}
-          </motion.div>
-        )}
+          {/* Empty state before search */}
+          {!loading && !results && !error && (
+            <p className="text-slate-400 text-center py-20 text-sm">
+              Enter a query above to search the corpus.
+            </p>
+          )}
+        </div>
 
-        {/* Empty state before search */}
-        {!loading && !results && !error && (
-          <p className="text-slate-400 text-center py-20 text-sm">
-            Enter a query above to search the corpus.
-          </p>
+        {/* Side panel — appears when search starts */}
+        {showPanel && (
+          <SearchSidePanel
+            loading={loading}
+            response={results}
+            workers={health?.workers ?? []}
+          />
         )}
-      </main>
+      </div>
     </motion.div>
   );
 }

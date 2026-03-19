@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 
 const SAMPLE_SEARCHES = [
@@ -74,6 +74,12 @@ export default function Landing() {
           >
             View System
           </button>
+          <Link
+            to="/about"
+            className="text-slate-400 hover:text-slate-600 text-sm transition-colors"
+          >
+            About this project →
+          </Link>
         </div>
 
         {/* Footer stats */}
