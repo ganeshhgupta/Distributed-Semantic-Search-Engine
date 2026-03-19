@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { HealthResponse } from "../types";
 
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const POLL_INTERVAL_MS = 5000;
 
 interface UseClusterHealthReturn {

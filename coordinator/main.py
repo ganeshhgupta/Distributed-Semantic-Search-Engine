@@ -80,7 +80,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-COORDINATOR_PORT: int = int(os.environ.get("COORDINATOR_PORT", "8000"))
+COORDINATOR_PORT: int = int(os.environ.get("PORT", os.environ.get("COORDINATOR_PORT", "8000")))
 WORKER_URLS_RAW: str = os.environ.get(
     "WORKER_URLS",
     "http://worker-1:8001,http://worker-2:8002,http://worker-3:8003",

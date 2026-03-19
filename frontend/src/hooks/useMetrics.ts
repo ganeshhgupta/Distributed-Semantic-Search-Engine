@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MetricsSnapshot } from "../types";
 
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const MAX_SNAPSHOTS = 60;
 const POLL_INTERVAL_MS = 1000;
 

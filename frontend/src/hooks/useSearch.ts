@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { SearchResponse } from "../types";
 
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 interface UseSearchReturn {
   results: SearchResponse | null;
