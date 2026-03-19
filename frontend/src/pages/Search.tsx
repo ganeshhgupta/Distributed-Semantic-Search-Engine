@@ -8,16 +8,17 @@ import SkeletonCard from "../components/SkeletonCard";
 import { useSearch } from "../hooks/useSearch";
 
 function LatencyPill({ ms }: { ms: number }) {
+  // Thresholds tuned for distributed semantic search (embedding + fanout)
   const color =
-    ms < 100
+    ms < 500
       ? "bg-emerald-50 text-emerald-600"
-      : ms < 200
+      : ms < 1500
         ? "bg-amber-50 text-amber-600"
-        : "bg-red-50 text-red-600";
+        : "bg-slate-100 text-slate-500";
 
   return (
     <span className={`font-mono text-xs rounded-full px-3 py-1 ${color}`}>
-      {ms.toFixed(1)}ms
+      {ms.toFixed(0)}ms
     </span>
   );
 }
@@ -91,9 +92,9 @@ export default function Search() {
           <div className="flex items-center justify-between mb-4 text-xs text-slate-400 font-mono">
             <span>{results.results.length} results for &ldquo;{results.query}&rdquo;</span>
             <span className="flex gap-3">
-              <span>fan-out {results.fanout_ms.toFixed(1)}ms</span>
-              <span>merge {results.merge_ms.toFixed(1)}ms</span>
-              <span>workers {results.workers_queried.join(", ")}</span>
+              <span>fan-out {results.fanout_ms.toFixed(0)}ms</span>
+              <span>merge {results.merge_ms.toFixed(0)}ms</span>
+              <span>{results.workers_queried.length} shards</span>
             </span>
           </div>
         )}
