@@ -1,5 +1,6 @@
 import { AnimatePresence } from "framer-motion";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import Corpus from "./pages/Corpus";
 import Landing from "./pages/Landing";
 import Search from "./pages/Search";
 import System from "./pages/System";
@@ -12,6 +13,7 @@ function AnimatedRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/search" element={<Search />} />
         <Route path="/system" element={<System />} />
+        <Route path="/corpus" element={<Corpus />} />
       </Routes>
     </AnimatePresence>
   );

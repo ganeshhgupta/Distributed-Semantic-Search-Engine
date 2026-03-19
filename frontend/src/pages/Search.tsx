@@ -70,12 +70,8 @@ export default function Search() {
           )}
         </div>
 
-        <Link
-          to="/system"
-          className="text-slate-500 hover:text-slate-800 text-sm transition-colors shrink-0"
-        >
-          System
-        </Link>
+        <Link to="/corpus" className="text-slate-500 hover:text-slate-800 text-sm transition-colors shrink-0">Corpus</Link>
+        <Link to="/system" className="text-slate-500 hover:text-slate-800 text-sm transition-colors shrink-0">System</Link>
       </header>
 
       {/* Results */}

@@ -18,7 +18,10 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from coordinator.health_poller import WorkerStatus
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -261,7 +264,7 @@ async def _fanout(
     Returns:
         (responses, workers_queried, degraded, fanout_ms)
     """
-    healthy = _health_poller.healthy_workers()
+    healthy = [w for w in _health_poller.healthy_workers() if w.worker_id not in _simulated_down]
     degraded = len(healthy) < len(_worker_statuses)
 
     if not healthy:
@@ -441,6 +444,107 @@ async def ready() -> dict:
     if not healthy:
         raise HTTPException(status_code=503, detail="No healthy workers")
     return {"status": "ready", "healthy_workers": len(healthy)}
+
+
+# ---------------------------------------------------------------------------
+# Corpus browser — fan-out to all healthy workers
+# ---------------------------------------------------------------------------
+
+@app.get("/corpus/sample")
+async def corpus_sample(n: int = 20) -> dict:
+    """
+    Return a random sample of documents from each healthy shard.
+    Used by the frontend corpus browser.
+    """
+    healthy = _health_poller.healthy_workers()
+    if not healthy:
+        raise HTTPException(status_code=503, detail="No healthy workers")
+
+    per_worker = max(1, n // len(healthy))
+
+    async def fetch_sample(worker: "WorkerStatus") -> Optional[dict]:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{worker.url}/corpus/sample?n={per_worker}")
+                resp.raise_for_status()
+                return resp.json()
+        except Exception:
+            return None
+
+    results = await asyncio.gather(*[fetch_sample(w) for w in healthy])
+    shards = [r for r in results if r is not None]
+
+    all_docs = []
+    for shard in shards:
+        all_docs.extend(shard.get("documents", []))
+
+    total_docs = sum(
+        w.last_health.document_count for w in _health_poller.all_workers() if w.last_health
+    )
+
+    return {
+        "shards": shards,
+        "documents": all_docs,
+        "total_docs": total_docs,
+        "healthy_shards": len(shards),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Admin — demo fault-tolerance simulation (no auth needed for portfolio demo)
+# ---------------------------------------------------------------------------
+
+# Set of worker_ids currently in simulated-down state
+_simulated_down: set[str] = set()
+_sim_recovery_tasks: dict[str, "asyncio.Task[None]"] = {}
+
+
+@app.post("/admin/simulate-down/{worker_id}")
+async def simulate_down(worker_id: str) -> dict:
+    """
+    Mark a worker as down in the coordinator's view for `duration` seconds.
+    The actual Render service keeps running — this only affects routing.
+    """
+    duration: int = 30
+
+    target = next((w for w in _worker_statuses if w.worker_id == worker_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Worker '{worker_id}' not found")
+
+    _simulated_down.add(worker_id)
+    target.healthy = False
+    target.consecutive_failures = 99
+
+    logger.info("DEMO: simulated worker %s as DOWN for %ds", worker_id, duration)
+
+    # Cancel any existing recovery task
+    if worker_id in _sim_recovery_tasks:
+        _sim_recovery_tasks[worker_id].cancel()
+
+    async def auto_recover() -> None:
+        await asyncio.sleep(duration)
+        _simulated_down.discard(worker_id)
+        logger.info("DEMO: auto-recovering worker %s", worker_id)
+
+    _sim_recovery_tasks[worker_id] = asyncio.create_task(auto_recover())
+
+    return {
+        "status": "simulated_down",
+        "worker_id": worker_id,
+        "auto_recover_seconds": duration,
+        "message": f"Worker {worker_id} will auto-recover in {duration}s",
+    }
+
+
+@app.post("/admin/simulate-recover/{worker_id}")
+async def simulate_recover(worker_id: str) -> dict:
+    """Manually restore a simulated-down worker."""
+    _simulated_down.discard(worker_id)
+    if worker_id in _sim_recovery_tasks:
+        _sim_recovery_tasks[worker_id].cancel()
+        del _sim_recovery_tasks[worker_id]
+    logger.info("DEMO: manually recovered worker %s", worker_id)
+    return {"status": "recovered", "worker_id": worker_id}
 
 
 # ---------------------------------------------------------------------------
