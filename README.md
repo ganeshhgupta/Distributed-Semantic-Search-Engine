@@ -4,6 +4,7 @@ A production-grade distributed semantic search engine built as a portfolio
 project demonstrating distributed systems engineering: consistent hashing,
 parallel fan-out, fault tolerance, and real-time observability.
 
+Try it here: (https://search-os-frontend-ganeshhguptas-projects.vercel.app/)
 ---
 
 ## Architecture
